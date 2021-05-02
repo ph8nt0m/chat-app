@@ -2,16 +2,62 @@ import React, { useState, useEffect } from "react";
 import queryString from 'query-string';
 import io from 'socket.io-client';
 
-const Chat = () => {
-    useEffect(() => {
-        const data = queryString.parse(window.location.search)
+let socket;
 
-        console.log(data)
-        console.log(window.location.search)
-    })
+const Chat = () => {
+    
+    const [name, setName] = useState('');
+    const [room, setRoom] = useState('');
+    const [message, setMessage] = useState('');
+    const [messages, setMessages] = useState([]);
+
+    const ENDPOINT = 'http://localhost:5000';
+
+    useEffect(() => {
+
+        socket = io(ENDPOINT, {transports: ['websocket']});
+
+        const { name, room } = queryString.parse(window.location.search);
+
+        setName(name);
+        setRoom(room);
+
+        socket.emit('join', { name, room }, () => {
+
+        });
+
+        return () => {
+            socket.emit('disconnect');
+            socket.off();
+        }
+    }, [ENDPOINT, window.location.search])
+
+    useEffect(() => {
+        socket.on('message', (message) => {
+            setMessage([...messages, message])
+        })
+    }, [messages]);
+
+    const sendMessage = (event) => {
+        event.preventDefault();
+
+        if (message) {
+            socket.emit('sendMessasge', message, () => setMessage(''));
+        }
+    }
+
+    console.log(message, messages)
 
     return (
-        <h1>Chat</h1>
+        <div className='outerContainer'>
+            <div className='container'>
+                <input 
+                    value={message} 
+                    onChange={(event) => setMessage(event.target.value)}
+                    onKeyPress={event => event.key === 'Enter' ? sendMessage(event) : null}
+                    />
+            </div>
+        </div>
     );
 }
 
